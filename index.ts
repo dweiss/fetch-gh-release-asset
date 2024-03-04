@@ -1,5 +1,5 @@
 /* eslint-disable no-void */
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
@@ -7,6 +7,7 @@ import retry from 'async-retry';
 import type { Context } from '@actions/github/lib/context';
 import type { HeadersInit } from 'node-fetch';
 import fetch from 'node-fetch';
+import { isDirectory } from 'os';
 
 interface GetRepoResult {
   readonly owner: string;
@@ -138,12 +139,16 @@ const main = async (): Promise<void> => {
   const inputTarget = core.getInput('target', { required: false });
   const file = core.getInput('file', { required: true });
   const usesRegex = core.getBooleanInput('regex', { required: false });
-  const target = inputTarget === '' ? file : inputTarget;
+  const target = inputTarget === '' ? '.' : inputTarget;
   const baseUrl =
     core.getInput('octokitBaseUrl', { required: false }) || undefined;
 
   const octokit = github.getOctokit(token, { baseUrl });
   const release = await getRelease(octokit, { owner, repo, version });
+
+  if (!isDirectory(target)) {
+    throw new Error("Target folder does not exist or is not a directory: " + target);
+  }
 
   const assetFilterFn = usesRegex
     ? filterByRegex(file)
@@ -154,7 +159,7 @@ const main = async (): Promise<void> => {
   for (const asset of assets) {
     await fetchAssetFile(octokit, {
       id: asset.id,
-      outputPath: usesRegex ? `${target}${asset.name}` : target,
+      outputPath: usesRegex ? join(target, asset.name) : target,
       owner,
       repo,
       token,
