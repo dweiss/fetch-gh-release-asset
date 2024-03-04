@@ -7,7 +7,7 @@ import retry from 'async-retry';
 import type { Context } from '@actions/github/lib/context';
 import type { HeadersInit } from 'node-fetch';
 import fetch from 'node-fetch';
-import { isDirectory } from 'os';
+import * as fs from 'fs';
 
 interface GetRepoResult {
   readonly owner: string;
@@ -146,7 +146,7 @@ const main = async (): Promise<void> => {
   const octokit = github.getOctokit(token, { baseUrl });
   const release = await getRelease(octokit, { owner, repo, version });
 
-  if (!isDirectory(target)) {
+  if (!fs.existsSync(target) || !fs.lstatSync(target).isDirectory()) {
     throw new Error("Target folder does not exist or is not a directory: " + target);
   }
 

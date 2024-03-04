@@ -668,7 +668,7 @@ var require_file_command = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.prepareKeyValueMessage = exports.issueFileCommand = void 0;
-    var fs2 = __importStar(require("fs"));
+    var fs3 = __importStar(require("fs"));
     var os = __importStar(require("os"));
     var uuid_1 = require_dist();
     var utils_1 = require_utils();
@@ -677,10 +677,10 @@ var require_file_command = __commonJS({
       if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
       }
-      if (!fs2.existsSync(filePath)) {
+      if (!fs3.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
       }
-      fs2.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
+      fs3.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
         encoding: "utf8"
       });
     }
@@ -28567,6 +28567,7 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
 }
 
 // index.ts
+var fs2 = __toESM(require("fs"));
 var getRepo = (inputRepoString, context2) => {
   if (inputRepoString === "") {
     return { owner: context2.repo.owner, repo: context2.repo.repo };
@@ -28645,10 +28646,13 @@ var main = async () => {
   const inputTarget = core.getInput("target", { required: false });
   const file = core.getInput("file", { required: true });
   const usesRegex = core.getBooleanInput("regex", { required: false });
-  const target = inputTarget === "" ? file : inputTarget;
+  const target = inputTarget === "" ? "." : inputTarget;
   const baseUrl = core.getInput("octokitBaseUrl", { required: false }) || void 0;
   const octokit = github.getOctokit(token, { baseUrl });
   const release = await getRelease(octokit, { owner, repo, version });
+  if (!fs2.existsSync(target) || !fs2.lstatSync(target).isDirectory()) {
+    throw new Error("Target folder does not exist or is not a directory: " + target);
+  }
   const assetFilterFn = usesRegex ? filterByRegex(file) : filterByFileName(file);
   const assets = release.data.assets.filter(assetFilterFn);
   if (assets.length === 0)
@@ -28656,7 +28660,7 @@ var main = async () => {
   for (const asset of assets) {
     await fetchAssetFile(octokit, {
       id: asset.id,
-      outputPath: usesRegex ? `${target}${asset.name}` : target,
+      outputPath: usesRegex ? (0, import_path.join)(target, asset.name) : target,
       owner,
       repo,
       token
