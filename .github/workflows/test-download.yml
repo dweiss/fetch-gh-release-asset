@@ -8,7 +8,32 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
+  build:
+    name: Lint, build and check dist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Lint
+        run: yarn lint
+      - name: Build
+        run: yarn build
+      - name: Check that dist/index.js is up to date
+        run: git diff --exit-code -- dist/index.js
+
   download:
     strategy:
       matrix:
@@ -26,7 +51,9 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Create a subdirectory
         run: |
           mkdir subdir
@@ -37,12 +64,16 @@ jobs:
           repo: 'dsaltares/godot-wild-jam-18'
           version: ${{ matrix.version }}
           file: 'plague-linux.zip'
-          target: 'subdir/plague-linux.zip'
+          target: 'subdir'
       - name: Display the outputs
+        env:
+          VERSION: ${{ steps.get_release.outputs.version }}
+          NAME: ${{ steps.get_release.outputs.name }}
+          BODY: ${{ steps.get_release.outputs.body }}
         run: |
-          echo "${{ steps.get_release.outputs.version }}"
-          echo "${{ steps.get_release.outputs.name }}"
-          echo "${{ steps.get_release.outputs.body }}"
+          echo "$VERSION"
+          echo "$NAME"
+          echo "$BODY"
       - name: Display the file (Linux, Mac)
         run: ls -l subdir/plague-linux.zip
         if: matrix.runs-on != 'windows-latest'

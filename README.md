@@ -2,6 +2,8 @@
 
 This action downloads an asset from a GitHub release and provides some release details as output. Private repos are supported.
 
+The action runs on Node 24, which requires an actions runner version 2.327.1 or later.
+
 ## Inputs
 
 ### `file`
@@ -22,7 +24,7 @@ The release version to fetch from in the form `tags/<tag_name>` or `<release_id>
 
 ### `target`
 
-Target file path. Only supports paths to subdirectories of the GitHub Actions workspace directory.
+Target directory. It must exist and should be the GitHub Actions workspace directory or one of its subdirectories. Each downloaded asset is saved under its own name in this directory. Defaults to the current directory.
 
 ### `regex`
 
@@ -67,7 +69,7 @@ with:
   repo: 'dsaltares/godot-wild-jam-18'
   version: 'tags/v0.1.18'
   file: 'plague-linux.zip'
-  target: 'subdir/plague-linux.zip'
+  target: 'subdir'
   token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -92,6 +94,6 @@ with:
   version: 'tags/v0.1.18'
   regex: true
   file: "plague-.*\\.zip"
-  target: 'subdir/'
+  target: 'subdir'
   token: ${{ secrets.GITHUB_TOKEN }}
 ```

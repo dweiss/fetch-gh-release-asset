@@ -1,13 +1,11 @@
-/* eslint-disable no-void */
-import { dirname, join } from 'path';
+import * as fs from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
+import { dirname, join } from 'path';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import retry from 'async-retry';
-import type { Context } from '@actions/github/lib/context';
-import type { HeadersInit } from 'node-fetch';
-import fetch from 'node-fetch';
-import * as fs from 'fs';
+
+type Context = typeof github.context;
 
 interface GetRepoResult {
   readonly owner: string;
@@ -53,9 +51,8 @@ const getRelease = (
   }
 };
 
-type GetReleaseResult = ReturnType<typeof getRelease> extends Promise<infer T>
-  ? T
-  : never;
+type GetReleaseResult =
+  ReturnType<typeof getRelease> extends Promise<infer T> ? T : never;
 
 type Asset = GetReleaseResult['data']['assets'][0];
 
@@ -72,12 +69,11 @@ const baseFetchAssetFile = async (
   { id, outputPath, owner, repo, token }: FetchAssetFileOptions
 ) => {
   const {
-    body,
     headers: { accept, 'user-agent': userAgent },
     method,
     url,
   } = octokit.request.endpoint(
-    'GET /repos/:owner/:repo/releases/assets/:asset_id',
+    'GET /repos/{owner}/{repo}/releases/assets/{asset_id}',
     {
       asset_id: id,
       headers: {
@@ -87,23 +83,19 @@ const baseFetchAssetFile = async (
       repo,
     }
   );
-  let headers: HeadersInit = {
-    accept,
-  };
-  if (token !== '')
-    headers = { ...headers, authorization: `token ${token}` };
+  let headers: Record<string, string> = { accept };
+  if (token !== '') headers = { ...headers, authorization: `token ${token}` };
 
   if (typeof userAgent !== 'undefined')
     headers = { ...headers, 'user-agent': userAgent };
 
-  const response = await fetch(url, { body, headers, method });
+  const response = await fetch(url, { headers, method });
   if (!response.ok) {
     const text = await response.text();
     core.warning(text);
     throw new Error('Invalid response');
   }
-  const blob = await response.blob();
-  const arrayBuffer = await blob.arrayBuffer();
+  const arrayBuffer = await response.arrayBuffer();
   await mkdir(dirname(outputPath), { recursive: true });
   void (await writeFile(outputPath, new Uint8Array(arrayBuffer)));
 };
@@ -147,7 +139,9 @@ const main = async (): Promise<void> => {
   const release = await getRelease(octokit, { owner, repo, version });
 
   if (!fs.existsSync(target) || !fs.lstatSync(target).isDirectory()) {
-    throw new Error("Target folder does not exist or is not a directory: " + target);
+    throw new Error(
+      'Target folder does not exist or is not a directory: ' + target
+    );
   }
 
   const assetFilterFn = usesRegex
@@ -159,7 +153,7 @@ const main = async (): Promise<void> => {
   for (const asset of assets) {
     await fetchAssetFile(octokit, {
       id: asset.id,
-      outputPath: usesRegex ? join(target, asset.name) : target,
+      outputPath: join(target, asset.name),
       owner,
       repo,
       token,
